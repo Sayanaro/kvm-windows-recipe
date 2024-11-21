@@ -1,9 +1,7 @@
-# Подготовка собственных образов с продуктами Microsoft
+# Подготовка собственных образов с продуктами Microsoft для использования в облаках на базе QEMU/KVM
 
 > ### ⚠ Внимание!
-> Инструкция и скрипты подготовки образов Windows Server распространяются As-Is и не предполагают расширенной поддержки. Рецепт подготовлен и протестирован Kitchen Labs на GVLK образах Windows Server 2016, 2019 и 2022 в облаках на базе QEMU/KVM. Иные версии, сборки, а также клиентские образы не поддержаны. Используя данный рецепт, вы соглашаетесь с тем, что неподдержанные сценарии вы должны добавить самостоятельно. Таже, пользователь рецепта принимает на себя все риски и вопросы, связанные с политикой лицензирования Microsoft. Команда Kitchen Labs и сервис-провайдер не несет ответственности за недобросовестное использование данной инструкции.
-
-Вы можете подготовить свои образы продуктов Microsoft, чтобы использовать их в Yandex Cloud с вашей собственной лицензией на [выделенных хостах](https://yandex.cloud/ru/docs/compute/concepts/dedicated-host). Обязательно свяжитесь с Microsoft и уточните, что ваша лицензия подходит для использования в облачных средах. Сборка образов возможно только при включенной опции VT-x/VT-d в UEFI вашего компьютера.
+> Инструкция и скрипты подготовки образов Windows Server распространяются As-Is и не предполагают расширенной поддержки. Рецепт подготовлен и протестирован на GVLK образах Windows Server 2016, 2019 и 2022 в облаках на базе QEMU/KVM. Иные версии, сборки, а также клиентские образы не поддержаны. Используя данный рецепт, вы соглашаетесь с тем, что неподдержанные сценарии вы должны добавить самостоятельно. Таже, пользователь рецепта принимает на себя все риски и вопросы, связанные с политикой лицензирования Microsoft. Разработчик и сервис-провайдеры не несет ответственности за недобросовестное использование данной инструкции.
 
 > ### ⚠ Внимание!
 > Для подготовки образов понадобится ISO-образ GVLK, который доступен на официально портале Microsoft Software Assurance. Сторонние сборки ISO-образов не поддерживаются данным рецептом.
@@ -11,7 +9,6 @@
 ## Definition of done
 Рецепт принимает на вход GVLK образ Windows Server, проводит настройку системы и устанавливает:
 - Cloudbase-Init
-- Yandex Cloud Agent для сброса пароля администратора
 - Последнее куммулятивное обновление + обновления .NET Framework 4.x + обновления безопасности
 - Windows Features: .NET Framework 3.5, Telnet Client, Windows Backup
 
@@ -22,7 +19,7 @@
 Чтобы создать образ, готовый к использованию в yandex-cloud:
 
 1. [Установите QEMU](https://www.qemu.org/download/).
-2. [Установите Packer](https://yandex.cloud/ru/docs/tutorials/infrastructure-management/packer-quickstart#install-packer).
+2. [Установите Packer](https://yandex.cloud/ru/docs/tutorials/infrastructure-management/packer-quickstart#install-packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli).
 3. Загрузите архив с [конфигурациями для Packer](download/public-windows-packer-v2.zip) и распакуйте его в нужную папку, например `windows-packer`.
 4. Загрузите [образ с драйверами](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso) и откройте его. Переместите папки `NetKVM`, `vioserial` и `viostor` в папку `windows-packer/drivers`. Папки содержат драйверы для разных ОС — обязательно используйте драйверы для вашей.
 5. Выберите подходящую для вашего продукта Microsoft конфигурацию для Packer и внесите следующие изменения в ее конфигурационный файл:
@@ -110,80 +107,8 @@ Install-WindowsFeature -Name Hyper-V -IncludeAllSubFeature -IncludeManagementToo
 aws s3 --endpoint-url=https://storage.yandexcloud.net cp output/packer-ws19core s3://<bucket_name>/packer-ws19core.qemu
 ```
 
-## Импортируйте образ в Compute CLoud
-
-В compute cloud образ необходимо импортировать с указанием ```--os-type windows```
-
-
-- #### CLI
-  
-  ```
-  yc compute image create --name <название образа> --description <описание образа> --os-type windows --source-uri <ссылка на образ в Object Storage>
-  ```
-
-- #### Bash
-
-  ```bash
-  curl -H "Authorization: Bearer `yc iam create-token`" -H  "accept: application/json" -X POST https://compute.{{ api-host }}/compute/v1/images -d '{"folderId": "<ID вашего каталога>", "name": "<название образа>", "description": "<описание образа>", "os": {"type": "WINDOWS"}, "pooled": false, "uri": "<ссылка на образ в Object Storage>"}'
-  ```
-
-- #### PowerShell
-
-  ```powershell
-  function Create-YCImage {
-    param(
-      [ValidateNotNullOrEmpty()]
-      [string]$folderId = "",
-
-      [ValidateNotNullOrEmpty()]
-      [string]$name = "",
-
-      [string]$description = "",
-
-      [ValidateNotNullOrEmpty()]
-      [string]$os_type = "WINDOWS",
-
-      [int64]$minDiskSizeGb = 50GB,
-
-      [ValidateNotNullOrEmpty()]
-      [string]$uri = ""
-    )
-
-    $body = @"
-  {
-    "folderId": "$folderId",
-    "name": "$name",
-    "description": "$description",
-    "os.type": "$os_type",
-    "minDiskSize": "$minDiskSizeGb",
-    "os": {
-      "type": "$os_type"
-    },
-    "uri": "$uri"
-  }
-  "@
-
-    Invoke-WebRequest `
-      -Method POST `
-      -URI https://compute.{{ api-host }}/compute/v1/images `
-      -header @{ "Authorization" = "Bearer $(& yc iam create-token)" } `
-      -ContentType 'Application/json' `
-      -body $body
-  }
-
-
-  $folderId = "<ID вашего каталога>"
-
-  Create-YCImage `
-    -folderId $folderId `
-    -name "<название образа>" `
-    -uri "<ссылка на образ в Object Storage>"
-
-  ```
+## Импортируйте образ
+[Импорт образов в VK Cloud](https://cloud.vk.com/docs/computing/iaas/how-to-guides/win-image#4_importiruyte_obraz_v_oblako_vk_cloud)
+[Импорт образа в Yandex Cloud](https://yandex.cloud/ru/docs/microsoft/byol#how-to-import)
 
 Импортированный образ можно использовать при создании загрузочного диска ВМ.
-
-## Полезные ссылки
-
-- [YC: Использование своей лицензии для продуктов Microsoft](https://yandex.cloud/ru/docs/microsoft/byol)
-- [YC: Безопасная передача пароля администратора в скрипт инициализации](https://yandex.cloud/ru/docs/microsoft/tutorials/secure-password-script)
