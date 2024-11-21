@@ -19,7 +19,7 @@
 Чтобы создать образ, готовый к использованию в yandex-cloud:
 
 1. [Установите QEMU](https://www.qemu.org/download/).
-2. [Установите Packer](https://yandex.cloud/ru/docs/tutorials/infrastructure-management/packer-quickstart#install-packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli).
+2. [Установите Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli).
 3. Загрузите архив с [конфигурациями для Packer](download/public-windows-packer-v2.zip) и распакуйте его в нужную папку, например `windows-packer`.
 4. Загрузите [образ с драйверами](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso) и откройте его. Переместите папки `NetKVM`, `vioserial` и `viostor` в папку `windows-packer/drivers`. Папки содержат драйверы для разных ОС — обязательно используйте драйверы для вашей.
 5. Выберите подходящую для вашего продукта Microsoft конфигурацию для Packer и внесите следующие изменения в ее конфигурационный файл:
